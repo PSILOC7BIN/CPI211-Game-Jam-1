@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,11 +6,12 @@ public class Player : MonoBehaviour
 {
     private Rigidbody body;
     //private GameObject ball;
-    [SerializeField] private float maxSpeed = 3.5f;
-    public float jumpPower = 10;
-    [SerializeField] private float moveForce = 35f;
+    [SerializeField] private float maxSpeed = .5f;
+    public float jumpPower =  1;
+    [SerializeField] private float moveForce = 15f;
     public float brakeStrength = 0.85f;
     private Transform camTf;
+    public float voidHeight = -20f;
 
     public Vector3 facing;
     public Vector3 perpendicular;
@@ -33,6 +34,16 @@ public class Player : MonoBehaviour
 
         facing = transform.forward;
         perpendicular = GetPerpendicular(facing);
+
+         CheckpointManager.Instance.SetCheckpoint(transform.position);
+    }
+
+    public void Respawn()
+    {
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+
+        transform.position = CheckpointManager.Instance.GetCheckpoint();
     }
 
     // Update is called once per frame
@@ -47,7 +58,18 @@ public class Player : MonoBehaviour
         xInput = Input.GetAxis("Horizontal");
         zInput = Input.GetAxis("Vertical");
         braking = Input.GetKey(KeyCode.B);
+
+        {
+        if (transform.position.y < voidHeight)
+        {
+            Respawn();
+        }
+        
     }
+    }
+
+
+    
 
     void FixedUpdate()
     {
