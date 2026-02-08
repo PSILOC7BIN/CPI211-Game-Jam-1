@@ -7,7 +7,7 @@ public class Player_Exp : MonoBehaviour
     private Rigidbody body;
     //private GameObject ball;
     public float speed = 5;
-    public float jumpPower = 10;
+    public float jumpPower = 5;
 
     public float zInput;
     public Vector3 facing;

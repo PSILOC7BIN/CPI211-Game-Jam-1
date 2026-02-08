@@ -4,12 +4,16 @@ using UnityEngine.SceneManagement;
 public class KillPlane : MonoBehaviour
 {
     private void OnTriggerEnter(Collider other)
+{
+    if (other.CompareTag("Player"))
     {
-        Debug.Log("KillPlane triggered by: " + other.name);
-
-        if (other.CompareTag("Player"))
+        Player player = other.GetComponent<Player>();
+        if (player != null)
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            Debug.Log("respawning at checkpoint");
+            player.Respawn();
         }
     }
+}
+
 }

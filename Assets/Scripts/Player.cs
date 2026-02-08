@@ -1,4 +1,3 @@
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -13,6 +12,7 @@ public class Player : MonoBehaviour
     public float brakeStrength = 0.85f;
 
     private Transform camTf;
+    public float voidHeight = -20f;
 
     [Header("Dash")]
     [SerializeField] private bool hasDash = false;      // locked until mystery box
@@ -134,6 +134,9 @@ public class Player : MonoBehaviour
 
         isDashing = false;
     }
+
+
+    
 
     void FixedUpdate()
     {
