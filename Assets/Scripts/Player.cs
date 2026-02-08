@@ -5,19 +5,28 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     private Rigidbody body;
-    //private GameObject ball;
+
     [SerializeField] private float maxSpeed = .5f;
-    public float jumpPower =  1;
+    public float jumpPower = 1;
     [SerializeField] private float moveForce = 15f;
     public float brakeStrength = 0.85f;
+
     private Transform camTf;
     public float voidHeight = -20f;
+
+    [Header("Dash")]
+    [SerializeField] private bool hasDash = false;      // locked until mystery box
+    [SerializeField] private float dashDistance = 5f;   // how far dash should go
+    [SerializeField] private float dashDuration = 0.15f;
+    [SerializeField] private float dashCooldown = 0.75f;
+
+    private bool isDashing = false;
+    private float nextDashTime = 0f;
 
     public Vector3 facing;
     public Vector3 perpendicular;
 
-    [SerializeField]
-    private bool isJumping = false;
+    [SerializeField] private bool isJumping = false;
 
     private float xInput;
     private float zInput;
@@ -25,8 +34,8 @@ public class Player : MonoBehaviour
 
     void Start()
     {
-        //ball = GameObject.FindGameObjectWithTag("Player");
         body = GetComponent<Rigidbody>();
+        if (body == null) Debug.LogError("Player is missing a Rigidbody!");
 
         camTf = GetComponentInChildren<UnityEngine.Camera>()?.transform;
         if (camTf == null && UnityEngine.Camera.main != null)
@@ -35,37 +44,95 @@ public class Player : MonoBehaviour
         facing = transform.forward;
         perpendicular = GetPerpendicular(facing);
 
-         CheckpointManager.Instance.SetCheckpoint(transform.position);
+        if (CheckpointManager.Instance != null)
+            CheckpointManager.Instance.SetCheckpoint(transform.position);
+    }
+
+    public void UnlockDash()
+    {
+        hasDash = true;
     }
 
     public void Respawn()
     {
+        if (body == null) return;
+
         body.linearVelocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
 
-        transform.position = CheckpointManager.Instance.GetCheckpoint();
+        if (CheckpointManager.Instance != null)
+            transform.position = CheckpointManager.Instance.GetCheckpoint();
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (Input.GetButtonDown("Jump") && !isJumping)
         {
-            print("jump");
             isJumping = true;
-            body.AddForce(Vector3.up * jumpPower, ForceMode.Impulse);
+            if (body != null)
+                body.AddForce(Vector3.up * jumpPower, ForceMode.Impulse);
         }
+
         xInput = Input.GetAxis("Horizontal");
         zInput = Input.GetAxis("Vertical");
         braking = Input.GetKey(KeyCode.B);
 
+        if (hasDash && Input.GetKeyDown(KeyCode.LeftShift))
         {
+            TryDash();
+        }
+
         if (transform.position.y < voidHeight)
         {
             Respawn();
         }
-        
     }
+
+    private void TryDash()
+    {
+        if (isDashing) return;
+        if (Time.time < nextDashTime) return;
+        if (body == null) return;
+
+        Vector3 forward = Vector3.forward;
+        Vector3 right = Vector3.right;
+
+        if (camTf != null)
+        {
+            forward = Vector3.ProjectOnPlane(camTf.forward, Vector3.up).normalized;
+            right = Vector3.ProjectOnPlane(camTf.right, Vector3.up).normalized;
+        }
+        else
+        {
+            forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+            right = Vector3.ProjectOnPlane(transform.right, Vector3.up).normalized;
+        }
+
+        Vector3 inputDir = (forward * zInput) + (right * xInput);
+        Vector3 dir = (inputDir.sqrMagnitude > 0.001f) ? inputDir.normalized : forward;
+
+        StartCoroutine(DashRoutine(dir));
+    }
+
+    private IEnumerator DashRoutine(Vector3 dir)
+    {
+        isDashing = true;
+        nextDashTime = Time.time + dashCooldown;
+
+        float dashSpeed = dashDistance / Mathf.Max(0.01f, dashDuration);
+        float originalY = body.linearVelocity.y;
+
+        float t = 0f;
+        while (t < dashDuration)
+        {
+            Vector3 v = dir * dashSpeed;
+            body.linearVelocity = new Vector3(v.x, originalY, v.z);
+
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        isDashing = false;
     }
 
 
@@ -73,14 +140,16 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Camera-relative directions on the XZ plane
+        if (isDashing) return;
+        if (body == null) return;
+
         Vector3 forward = Vector3.forward;
         Vector3 right = Vector3.right;
 
         if (camTf != null)
         {
             forward = Vector3.ProjectOnPlane(camTf.forward, Vector3.up).normalized;
-            right   = Vector3.ProjectOnPlane(camTf.right, Vector3.up).normalized;
+            right = Vector3.ProjectOnPlane(camTf.right, Vector3.up).normalized;
         }
 
         Vector3 inputDir = (forward * zInput) + (right * xInput);
@@ -101,18 +170,6 @@ public class Player : MonoBehaviour
         body.linearVelocity = new Vector3(lateral.x, v.y, lateral.z);
     }
 
-    //void FixedUpdate_base()
-    //{
-    //    float xInput = Input.GetAxis("Horizontal");
-    //    float zInput = Input.GetAxis("Vertical");
-
-    //    Vector3 movement = new Vector3(xInput, 0, zInput);
-    //    movement*=speed;
-    //    movement = Vector3.ClampMagnitude(movement,speed);
-    //    body.AddForce(movement);
-    //}
-
-    
     private Vector3 GetPerpendicular(Vector3 inVec)
     {
         return new Vector3(inVec.z, 0, -inVec.x);
@@ -123,15 +180,14 @@ public class Player : MonoBehaviour
         Vector3 delta = Vector3.zero;
         List<ContactPoint> list = new List<ContactPoint>();
         col.GetContacts(list);
-       // print("Landing: " + col.contactCount);
-        for(int i = 0; i < col.contactCount; i++)
+
+        for (int i = 0; i < col.contactCount; i++)
         {
             delta += transform.position - list[i].point;
-            //print(transform.position + " - " + list[i].point + " " + delta);
         }
         delta /= col.contactCount;
-        //Debug.Log("Landing: Done " + delta + " --- " + Mathf.Abs(delta.y));
-        if(Mathf.Abs(delta.y)>0.25)
+
+        if (Mathf.Abs(delta.y) > 0.25f)
             isJumping = false;
     }
 }
