@@ -7,7 +7,7 @@ public class GameManagerUI : MonoBehaviour
 
     void Start()
     {
-        
+
     }
 
     public void SetMysteryCollected()

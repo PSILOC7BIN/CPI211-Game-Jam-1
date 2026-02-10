@@ -69,8 +69,11 @@ public class Player : MonoBehaviour
         if (Input.GetButtonDown("Jump") && !isJumping)
         {
             isJumping = true;
-            if (body != null)
+            if (body != null){
+                
                 body.AddForce(Vector3.up * jumpPower, ForceMode.Impulse);
+            }
+        
         }
 
         xInput = Input.GetAxis("Horizontal");
